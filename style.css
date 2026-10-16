@@ -1,0 +1,60 @@
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -9999; /* Super low layer to guarantee it's in the background */
+  
+  background-image: url('IMPERIAL_logo_RGB_Blue_2024.png') !important; 
+  background-repeat: no-repeat !important;
+  background-position: center 30% !important;
+  background-size: 75% !important; 
+  opacity: 0.25 !important; /* Temporarily higher so you can see it */
+  transform: rotate(-45deg); /* Use negative degrees to rotate counter-clockwise like standard watermarks */
+}
+
+body {
+  background-color: transparent !important; /* Prevents RStudio from blocking the image */
+}
+
+.main-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 30px;
+  background-color: rgba(255, 255, 255, 0.85) !important; /* Slightly more transparent */
+}
+
+/* Define the font family weights using the subfolder path */
+@font-face {
+  font-family: 'Imperial Sans';
+  src: url('fonts/ImperialSansText-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Imperial Sans';
+  src: url('fonts/ImperialSansText-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Imperial Sans';
+  src: url('fonts/ImperialSansText-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+
+/* Apply it to the document */
+body, p, li {
+  font-family: 'Imperial Sans', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Imperial Sans', sans-serif;
+  font-weight: bold;
+  color: #003366; /* Imperial Blue */
+}
