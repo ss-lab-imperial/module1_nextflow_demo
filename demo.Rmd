@@ -16,7 +16,7 @@ if (file.exists("ic_style.R")) source("ic_style.R")
 ```
 
 
-During the Week 3 materials, as well as introducing the Imperial HPC, we also briefly introduced the `nextflow` workflow system. The coverage of nextflow was buried a bit amongst lots of other crucial information, but the use of `nextflow` is probably one of the more important skills you can acquire. Since it's inception it has been revolutionised the way in which researchers develop, distribute and execute pipelines. It is primarily used for the processing of 'omics data, but pipelines for Neuroscience also exist.
+During the Week 3 materials, as well as introducing the Imperial HPC, we also briefly introduced the `nextflow` workflow system. The description of nextflow was buried a bit amongst lots of other crucial information, but the use of `nextflow` is probably one of the more important skills you can acquire. Since it's inception it has been revolutionised the way in which researchers develop, distribute and execute pipelines. It is primarily used for the processing of 'omics data, but pipelines for Neuroscience also exist.
 
 - [nf-core](nf.core)
 - [nf-neuro](https://nf-neuro.github.io)
@@ -24,7 +24,7 @@ During the Week 3 materials, as well as introducing the Imperial HPC, we also br
 
 # Why do we need a workflow manager?
 
-By now we have learnt a few commands that, when joined together, can form the basis for a minimal analysis or data processing pipeline. We have also discussed how to submit our scripts to a HPC so we can use more computational resource and run tasks in parallel. These are all skills you will need to master in Computational Biomedicine, and critical if you want to prototype code or try something out that only has a few computational tasks. Another ability you will learn is how to make the best use of your time. Being able to run a publication-ready analysis on complex data types such as 'omics, which often involve many software tools, is another art in itself. Quite frankly, some of these tasks are not particularly exciting and can consume a large amount of time. A workflow manager solves this, and more.
+By now we have learnt a few commands that, when joined together, can form the basis for a minimal analysis or data processing pipeline. We have also discussed how to submit our scripts to a HPC so we can use more computational resource and run tasks in parallel. These are all skills you will need to master in Computational Biomedicine, and critical if you want to prototype code or try something out that only has a few computational tasks. Another ability you will learn is how to make the best use of your time. Being able to run a publication-ready analysis on complex data types such as 'omics, which often involve many software tools, is another art in itself. Quite frankly, some of these details are not particularly exciting and can consume a large amount of time. A workflow manager solves this, and more.
 
 Without getting into too much specific detail, let's assume we have the raw sequencing data for 100 patients to process. There are three very broad tasks for each patient. 
 
@@ -39,6 +39,8 @@ Without getting into too much specific detail, let's assume we have the raw sequ
 
 For a particular patient, the tasks have to be performed in order; QC -> Alignment -> Counting. However, the processing of each patient is completely independent.
 
+Workflow managers such as nextflow perform critical roles in running a software pipeline
+
 ### Software Dependencies & Installation
 
 Bioinformatics tools often rely on specific underlying libraries, drivers, or system packages. Installing these tools manually, or juggling conflicting version requirements across different packages—can quickly lead to "dependency hell". For example, you might have two software tools that you need to install that rely on different versions of C or Python. Workflow managers combat this using containerisation approaches such as Docker and Singularity.
@@ -49,11 +51,15 @@ As the "counting" task for each patient depends on alignment, we have to make su
 
 ### Incompatible software input / output
 
-It is not uncommon for software tools to be developed by different research groups in isolation, for a specific task in the overall pipeline. A piece of software might have certain requirements about what input it takes, and the software earlier in the pipeline may not always conform to these standards. An example might be that some software assumes chromosome names have a "chr" prefix, whereas another may not. Chaining these together requires some data manipulation that, whilst not particularly challenging, is time consuming to catch all edge-cases. Software can also change output formats over time, meaning we have to update these utility scripts.
+It is not uncommon for software tools to be developed by different research groups in isolation, for a specific task. A piece of software might have certain requirements about what input it takes, and the software earlier in the pipeline may not always conform to these standards. An example might be that some software assumes chromosome names have a "chr" prefix, whereas another may not. Chaining data together and ensuring it flows from one tool to another requires some data manipulation that, whilst not particularly challenging, is time consuming to catch all edge-cases. Software can also change output formats over time, meaning we have to update these utility scripts.
+
+## Automated file management
+
+Running hundreds of processing steps across dozens of samples generates thousands of intermediate (i.e. not the final output), logs and error files. Without a systematic approach, your working directory quickly becomes cluttered and impossible to navigate. Automated file management enforces coherent, predictable folder structures (e.g., separating raw inputs, intermediate scratch files, logs, and final publication figures). Workflow managers automate the creation of these directory hierarchies, and can clean up temporary files that consume valuable HPC storage, and ensure intermediate outputs are placed exactly where downstream tools expect to find them. Files and folder can also naming in a consistent manner, so that the files relating to "Patient1", "Patient2" etc can be quickly located.
 
 ### Resource Allocation
 
-Not all software requires the same computing resource. In our example, QC requires relatively little RAM and CPU, but alignment is extremely intensive. It would be incredibly inefficient to allocate the amount of memory required for alignment to a QC task, therefore workflow managers allocate resource differently depending on the task at hand.
+Not all software requires the same computing resource. In our example, QC requires relatively little RAM and CPU, but alignment is extremely intensive. It would be incredibly inefficient to allocate the amount of memory required for alignment to a QC task. On a HPC it is critically important to make the most use of the shared resource. If you are requesting more RAM or HPC than you actually need, it is a wasted resource that other could be using. Moreover, you will likely have to queue for longer before the resource becomes available. Workflow managers will effectively manage resources
 
 ### Recovering from failed tasks
 
@@ -64,9 +70,12 @@ Some complex analyses can run for many days (if not weeks!) and during this time
 
 Projects like `nf-core` (and `nf-neuro`) are essentially collection of pre-built pipelines built using Nextflow that are freely available. It wasn't too long ago that each institute and research group would have it's own pipeline for a common task such as RNA-seq analysis, often covering the same steps, that had to be configured slightly differently for the nuances of their HPC setup. It was extremely challenging to *exactly* reproduce work from another lab even if you had all the same software installed. 
 
-Unless you are doing something very novel or bespoke **we would recommend people re-using existing analysis pipelines rather than writing their own**. 
+Unless you are doing something very novel or bespoke **we would recommend people re-using existing analysis pipelines rather than writing their own**. A challenging aspect of using pipelines for a specific analysis is choosing exactly which software to use for each step. For the tasks in our example, alignment and quantification have many credible options and an inexperience researcher may be unsure about which to use. The software chosen to be part of an `nf.core` pipeline is decided by a community, open-source effort to upon a best-practice consensus - rather than being the opinion of one particular individual or group (people unsurprisingly tend to recommend the software developed in their own group or lab). Moreover, the parameters for each software have been chosen in advance using sensible values. This pre-configuration removes a significant time burden on the individual researcher. It is now possible to analyse data that you haven't previously encountered and get results that you can start to work with. However, you still need to read the pipeline documentation and be aware of any caveats.
 
-Fortunately, `nextflow` is available as a *module* on the Imperial HPC. Once you have logged-in in the usual fashion.
+
+
+
+`nextflow` is available as a *module* on the Imperial HPC. Once you have logged-in in the usual fashion. It can be loaded in the following way, although we would normally do this via a script.
 
 ```
 ## Note the capitalisation of Nextflow
@@ -81,7 +90,8 @@ In our opinion, nextflow is the preferred solution to running pipelines for omic
 
 - [nf.core homepage](https://nf-co.re/)
 
-We will start by getting a small "demo" pipeline running, before progressing to the RNA-seq one
+We will start by getting a small "demo" pipeline running, before progressing to the RNA-seq one, which is more complex on the face of it, but not actually much more difficult to run.
+
 
 - [nf-core demo pipeline](https://nf-co.re/demo/1.1.0/)
 
