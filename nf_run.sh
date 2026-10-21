@@ -8,9 +8,14 @@
 
 module load Nextflow
 
+#make sure a tmp folder required by singularity exists
+mkdir -p /rds/general/user/${USER}/ephemeral/tmp/
+
 cd $PBS_O_WORKDIR
 
-nextflow run nf-core/demo \
+nextflow run nf-core/fetchngs \
+    -r 1.12.0 \
 		-profile imperial \
-		--input samplesheet.csv \
+		--input ids.csv \
+		--download_method sratools \
 		--outdir nf_out 

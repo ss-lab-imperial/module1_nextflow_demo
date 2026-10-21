@@ -90,12 +90,12 @@ In our opinion, nextflow is the preferred solution to running pipelines for omic
 
 - [nf.core homepage](https://nf-co.re/)
 
-We will start by getting a small "demo" pipeline running, before progressing to the RNA-seq one, which is more complex on the face of it, but not actually much more difficult to run.
+We will start by getting the "fetchngs" pipeline running, which is an automated way of retrieving "ngs" data from various repositories. Later on we will show the RNA-seq pipeline, which is more complex on the face of it, but not actually much more difficult to run.
 
 
-- [nf-core demo pipeline](https://nf-co.re/demo/1.1.0/)
+- [nf-core fetchngs pipeline](https://seqera.io/pipelines/fetchngs--nf-core/#readme)
 
-![](https://raw.githubusercontent.com/nf-core/demo/1.1.0//docs/images/nf-core-demo-subway.png)
+![](https://github.com/nf-core/fetchngs/raw/master/docs/images/nf-core-fetchngs_metro_map_grey.png)
 
 
 - [nf.core RNA-seq pipeline](https://nf-co.re/rnaseq)
@@ -103,10 +103,9 @@ We will start by getting a small "demo" pipeline running, before progressing to 
 ![](https://raw.githubusercontent.com/nf-core/rnaseq/3.24.0//docs/images/nf-core-rnaseq_metro_map_grey_animated.svg)
 
 
-## Running the nf-core demo pipeline
+## Running the nf-core fetchngs pipeline
 
-
-After logging into the HPC, create a directory (`mkdir`) where you want to run the demo pipeline. You need to create a job submission script, which I have called `nf_run.sh`. There is a copy of the script also on the github repo.
+After logging into the HPC, create a directory (`mkdir`) where you want to run the `fetchngs` pipeline. You need to create a job submission script, which I have called `nf_run.sh`. There is a copy of the script also on the github repo.
 
 - [Link to submission script](nf_run.sh)
 
@@ -126,8 +125,11 @@ mkdir -p /rds/general/user/${USER}/ephemeral/tmp/
 
 cd $PBS_O_WORKDIR
 
-nextflow run nf-core/demo \
-		-profile test, imperial \
+nextflow run nf-core/fetchngs \
+    -r 1.12.0 \
+		-profile imperial \
+		--input ids.csv \
+		--download_method sratools \
 		--outdir nf_out 
 ```
 
@@ -135,16 +137,17 @@ The header of the script defines the HPC settings in the usual manner. I have pi
 
 We then have to load the Nextflow module and make sure that our working directory is set to the directory that the job is submitted from. 
 
-The command to run and install the pipeline is `nextflow run` followed by any associated parameters for the particular pipeline that you want to use. A short explanation of `profile` is that it tells nextflow how to behave on your institutes HPC. Users and institutes are able to create configuration files that can be distributed and reused and define things like what containerisation approach to use, the job scheduler on the HPC and any memory, cpu or time limitations. Fortunately we don't have to work these out for ourselves as someone has already created an Imperial one. If you are curious you can see the contents on github. The `profile` can also be used to run the pipeline in `test` mode, meaning that demonstration data will be used rather than suppling your own.
+The command to run and install the pipeline is `nextflow run` followed by any associated parameters for the particular pipeline that you want to use. Each pipeline is held under version control via github. With the `-r` flag we can request a particular version of the pipeline. Here I am asking for version `1.12.0` of the `fetchngs` pipeline. A short explanation of `profile` is that it tells nextflow how to behave on your institutes HPC. Users and institutes are able to create configuration files that can be distributed and reused and define things like what containerisation approach to use, the job scheduler on the HPC and any memory, cpu or time limitations. Fortunately we don't have to work these out for ourselves as someone has already created an Imperial one. If you are curious you can see the contents on github. The `profile` can also be used to run the pipeline in `test` mode, meaning that demonstration data will be used rather than suppling your own.
 
 - [Imperial profile](https://github.com/nf-core/configs/blob/master/conf/imperial.config)
 
 
 There are a couple of options typical to all nf-core pipelines that are fairly self-explanatory:-
 
-- `input`; pointing to a csv file defining the locations of the input files (i.e. your fastq files). **We are not using this here as we are downloading a test dataset**
 - `outdir`; where the outputs of the pipeline will be written to
+- `input`; pointing to a csv file defining the locations of the input files. For this particular pipeline it is a file containing the public IDs of data we want to retrieve. **You will learn more about databases / repositories for storing published data next week**.
 
+A further option we have used for this pipeline is to tell it to use the software suite `sra-tools` to download the data for us. 
 
 We can then submit, and wait
 
@@ -161,32 +164,34 @@ The log and error files get written to your working folder after the pipeline fi
 
 ### A note about containers
 
-You might reasonbly expect the installation of a pipeline comprising several pieces of software to install each of these onto your system. This is not the case with nextflow, as you will see if you try and run `fastqc` or `multiqc` which are both used as part of the demo pipeline. 
+We have told the pipeline to use a piece of software called `sra-tools` to help download our data. The particular command used to download fastq files is called `fastq-dump`. If this had been installed for us, we would be able to use the following:-
 
 ```{bash}
-[mdunning@login-c cancer_fibroblasts_rnaseq]$ fastqc
--bash: fastqc: command not found
+[mdunning@login-b fetchngs]$ fastq-dump
+-bash: fastq-dump: command not found
 ```
 
-Instead, software is distributed in the form of containers (or images). These are self-contained and isolated software environments, each containing a specific version of a piece of software. It is a technique to get around the "but the software works on my machine..." problem. The `singularity` (now apptainer) software has been used to create these images and by default these are stored in the `work` folder. This is an alternative to the popular "docker" project which is able to used on HPC (since docker is usually not allowed to be used on HPC).
+So how is the pipeline able to use sra-tools? With nextflow software is distributed in the form of containers (or images). These are self-contained and isolated software environments, each containing a specific version of a piece of software. It is a technique to get around the "but the software works on my machine..." problem. The `singularity` (now apptainer) software has been used to create these images and by default these are stored in the `work` folder. This is an alternative to the popular "docker" project which is able to used on HPC (since docker is usually not allowed to be used on HPC).
 
 ```{bash}
-[mdunning@login-c cancer_fibroblasts_rnaseq]$ find work/ -name *.img -o -name *.sif
-work/singularity/depot.galaxyproject.org-singularity-salmon-1.10.3--h6dccd9a_2.img
-work/singularity/community-cr-prod.seqera.io-docker-registry-v2-blobs-sha256-23-23651ffd6a171ef3ba867cb97ef615f6dd6be39158df9466fe92b5e844cd7d59-data.img
+[mdunning@login-b fetchngs]$ find work/ -name *.img -o -name *.sif
 work/singularity/depot.galaxyproject.org-singularity-python-3.9--1.img
-work/singularity/depot.galaxyproject.org-singularity-trim-galore-0.6.10--hdfd78af_2.img
-work/singularity/depot.galaxyproject.org-singularity-fastqc-0.12.1--hdfd78af_0.img
-work/singularity/depot.galaxyproject.org-singularity-samtools-1.22.1--h96c455f_0.img
-work/singularity/depot.galaxyproject.org-singularity-perl-5.26.2.img
-work/singularity/community-cr-prod.seqera.io-docker-registry-v2-blobs-sha256-26-268b4c9c6cbf8fa6606c9b7fd4fafce18bf2c931d1a809a0
+work/singularity/depot.galaxyproject.org-singularity-sra-tools-3.0.8--h9f5acd7_0.img
+work/singularity/depot.galaxyproject.org-singularity-mulled-v2-5f89fe0cd045cb1d615630b9261a1d17943a9b6a-6a9ff0e76ec016c3d0d27e0c0d362339f2d787e6-0.img
 ```
 
-If I *really* wanted to use the same version of `fastqc` as used in the pipeline I could do:-
+If I *really* wanted to use the same version of `sra-tools` as used in the pipeline I could do:-
 
 ```{bash}
-[mdunning@login-c cancer_fibroblasts_rnaseq]$ singularity exec work/singularity/depot.galaxyproject.org-singularity-fastqc-0.12.1--hdfd78af_0.img fastqc --version
-FastQC v0.12.1
+[mdunning@login-b fetchngs]$ singularity exec work/singularity/depot.galaxyproject.org-singularity-sra-tools-3.0.8--h9f5acd7_0.img fastq-dump
+
+Usage:
+  /usr/local/bin/fastq-dump [options] <path> [<path>...]
+  /usr/local/bin/fastq-dump [options] <accession>
+
+Use option --help for more information
+
+/usr/local/bin/fastq-dump : 3.0.8
 ```
 
 ### Running on your own machine
@@ -194,10 +199,14 @@ FastQC v0.12.1
 A nice feature of nextflow is the portability between different computing environments. e.g. if the HPC becomes unavailable for a while you can keep running analyses on your own machine or the cloud with minimal setup. If running locally (i.e. on your own machine) you will probably want to install `docker` and you'll also need to install `nextflow` (which in turn requires `java`). The run command you can use is then:-
 
 ```{bash}
-nextflow run nf-core/demo 
-    -profile test,docker \
-    --outdir nf_out
+nextflow run nf-core/fetchngs \
+    -r 1.12.0 \
+		-profile docker \
+		--input ids.csv \
+		--download_method sratools \
+		--outdir nf_out 
 ```
+
 
 ## Running an RNA-seq pipeline
 
