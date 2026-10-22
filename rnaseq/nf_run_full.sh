@@ -14,4 +14,5 @@ nextflow run nf-core/rnaseq -profile imperial \
 		--outdir nf_out \
 		--input samplesheet.csv \
 		-params-file rnaseq_human.yml \
+		-work-dir /rds/general/user/${USER}/ephemeral/nf_work_rnaseq \
 		-resume
