@@ -18,4 +18,5 @@ nextflow run nf-core/fetchngs \
 		-profile imperial \
 		--input ids.csv \
 		--download_method sratools \
+		--nf_core_pipeline rnaseq \
 		--outdir nf_out 

@@ -105,9 +105,11 @@ We will start by getting the "fetchngs" pipeline running, which is an automated 
 
 ## Running the nf-core fetchngs pipeline
 
-After logging into the HPC, create a directory (`mkdir`) where you want to run the `fetchngs` pipeline. You need to create a job submission script, which I have called `nf_run.sh`. There is a copy of the script also on the github repo.
+After logging into the HPC, create a directory (`mkdir`) called `fetchngs` where you want to run the `fetchngs` pipeline. You need to create a job submission script, which I have called `nf_run.sh`, and a file listing the IDs of the data we want to download (`ids.csv`, see below). Copies of both are available here:-
 
-- [Link to submission script](nf_run.sh)
+- [nf_run.sh](fetchngs/nf_run.sh)
+- [ids.csv](fetchngs/ids.csv)
+
 
 ```{bash}
 #!/bin/bash
@@ -130,6 +132,7 @@ nextflow run nf-core/fetchngs \
 		-profile imperial \
 		--input ids.csv \
 		--download_method sratools \
+		--nf_core_pipeline rnaseq \
 		--outdir nf_out 
 ```
 
@@ -137,7 +140,9 @@ The header of the script defines the HPC settings in the usual manner. I have pi
 
 We then have to load the Nextflow module and make sure that our working directory is set to the directory that the job is submitted from. 
 
-The command to run and install the pipeline is `nextflow run` followed by any associated parameters for the particular pipeline that you want to use. Each pipeline is held under version control via github. With the `-r` flag we can request a particular version of the pipeline. Here I am asking for version `1.12.0` of the `fetchngs` pipeline. A short explanation of `profile` is that it tells nextflow how to behave on your institutes HPC. Users and institutes are able to create configuration files that can be distributed and reused and define things like what containerisation approach to use, the job scheduler on the HPC and any memory, cpu or time limitations. Fortunately we don't have to work these out for ourselves as someone has already created an Imperial one. If you are curious you can see the contents on github. The `profile` can also be used to run the pipeline in `test` mode, meaning that demonstration data will be used rather than suppling your own.
+The command to run and install the pipeline is `nextflow run` followed by any associated parameters for the particular pipeline that you want to use. Each pipeline is held under version control via github. With the `-r` flag we can request a particular version of the pipeline. Here I am asking for version `1.12.0` of the `fetchngs` pipeline. 
+
+A short explanation of `profile` is that it tells nextflow how to behave on your institutes HPC. Users and institutes are able to create configuration files that can be distributed and reused and define things like what containerisation approach to use, the job scheduler on the HPC and any memory, cpu or time limitations. Fortunately we don't have to work these out for ourselves as someone has already created an Imperial one. If you are curious you can see the contents on github. The `profile` can also be used to run the pipeline in `test` mode, meaning that demonstration data will be used rather than suppling your own.
 
 - [Imperial profile](https://github.com/nf-core/configs/blob/master/conf/imperial.config)
 
@@ -147,7 +152,23 @@ There are a couple of options typical to all nf-core pipelines that are fairly s
 - `outdir`; where the outputs of the pipeline will be written to
 - `input`; pointing to a csv file defining the locations of the input files. For this particular pipeline it is a file containing the public IDs of data we want to retrieve. **You will learn more about databases / repositories for storing published data next week**.
 
+```{bash}
+[mdunning@login-b fetchngs]$ cat ids.csv 
+ERR732901
+ERR732902
+ERR732903
+ERR732904
+ERR732905
+ERR732906
+ERR732907
+ERR732908
+ERR732909
+```
+
+
 A further option we have used for this pipeline is to tell it to use the software suite `sra-tools` to download the data for us. 
+
+Finally, `--nf_core_pipeline rnaseq` asks `fetchngs` to create a sample sheet in the format expected by the nf-core RNA-seq pipeline. We will use this later on to analyse the data we have downloaded.
 
 We can then submit, and wait
 
@@ -160,7 +181,11 @@ The first thing you will notice is that the output directory is created (if it d
 - using the `qstat -u $USER` command to see what is currently running. As nextflow is utilising the HPC you should see several jobs being run at the same time. You might also notice that different RAM and time requirements are specified for different jobs. 
 - the `nf_out/pipeline_info` folder (which may take a few moments to be created) contains an `execution_trace_` txt file which will be named with a time stamp. This is a log of what steps of the pipeline have been run.
 
-The log and error files get written to your working folder after the pipeline finishes, and all outputs are written to `nf_out`. 
+The log and error files get written to your working folder after the pipeline finishes, and all outputs are written to `nf_out`. The most important outputs are:-
+
+- `nf_out/fastq`; the raw sequencing data (fastq files) for each of the IDs we requested
+- `nf_out/samplesheet/samplesheet.csv`; a sample sheet listing the samples and the (full) paths to their fastq files. As we used the `--nf_core_pipeline rnaseq` option, this is ready to be used as the `input` for the RNA-seq pipeline
+- `nf_out/metadata`; information about each sample retrieved from the public repository
 
 ### A note about containers
 
@@ -204,13 +229,14 @@ nextflow run nf-core/fetchngs \
 		-profile docker \
 		--input ids.csv \
 		--download_method sratools \
+		--nf_core_pipeline rnaseq \
 		--outdir nf_out 
 ```
 
 
 ## Running an RNA-seq pipeline
 
-Switching to using a different pipeline is a matter of changing the first argument in the `nextflow run` command. A list of all available pipelines can be found here. Here is an example of running the test dataset through the current RNA-seq pipeline.
+Switching to using a different pipeline is a matter of changing the first argument in the `nextflow run` command. A list of all available pipelines can be found here. Here is an example of running a test dataset through the current RNA-seq pipeline. Using the `test` option in the profile is a good idea if you just want to see what the pipeline produces before running it on your own data. In this case we don't need an `input`, as the pipeiline will automatically download some example data.
 
 - [nf-core pipelines list](https://nf-co.re/pipelines)
 
@@ -232,9 +258,9 @@ nextflow run nf-core/rnaseq \
 		--outdir nf_out
 ```
 
-The run command was mostly the same as before, except we are using `nf-core/rnaseq` instead of the demo pipeline. We didn't need to specify a sample sheet, as it automatically downloaded a small test dataset.
+The run command was mostly the same as before, except we are using `nf-core/rnaseq` instead of `nf-core/fetchngs`. We didn't need to specify a sample sheet, as it automatically downloaded a small test dataset.
 
-In real-life there are a few more options you might want to change, so lets look at this using a published dataset. 
+In real-life there are a few more options you might want to change, so lets look at this using the published dataset that we downloaded with `fetchngs`. I would recommend creating a new directory for the RNA-seq analysis alongside the `fetchngs` directory we used earlier (e.g. `rnaseq`), so that the outputs of the two pipelines are kept separate.
 
 The job submission command is as follows. Notice that the RAM specification is still quite low. This resource refers to the `nextflow` command itself and **NOT** any of the subsequent jobs that it will submit. It is a good idea to keep this low (a few Gb) to keep the wait time for the pipeline to start to a minimum. The `walltime` might need to be quite long, as this refers to the total time taken to the run the pipeline, and not the time allocation of any specific tasks. In practice, I have found this particular dataset to be fully analysed in a few hours or less depending on HPC capacity.
 
@@ -253,7 +279,7 @@ cd $PBS_O_WORKDIR
 
 nextflow run nf-core/rnaseq -profile imperial \
 		--outdir nf_out \
-		--input nf_samplesheet.csv \
+		--input samplesheet.csv \
 		-params-file rnaseq_human.yml \
 		-resume
 
@@ -261,12 +287,31 @@ nextflow run nf-core/rnaseq -profile imperial \
 
 I've added the `resume` flag to this pipeline run. This is a very good habit to get into if you are running longer pipelines and / or processing many samples. In the case of a pipeline error, which could be due to HPC downtime rather than something you did wrong, the next time you run the pipeline it will commence at the same stage the previous run failed. i.e. if the QC has already been completed it won't bother repeating the QC steps. This can be a huge time saver.
 
-There are number of files you will need to re-run this example; the first of which will download some example data:-
+The `input` for this run is based on the sample sheet that was created by `fetchngs`, so we don't need to download the fastq files again or write our own sample sheet from scratch. However, we can't use it exactly as it is. Here are the first few lines (only the first four columns are shown):-
 
-- [download.sh](rnaseq/download.sh)
-- [nf_run_full.sh](rnaseq/nf_run_full.sh)
-- [nf_samplesheet.csv](rnaseq/nf_samplesheet.csv)
-- [rnaseq_human.yml](rnaseq/rnaseq_human.yml)
+```{bash}
+[mdunning@login-b rnaseq]$ head -n 3 ../fetchngs/nf_out/samplesheet/samplesheet.csv | cut -d, -f1-4
+"sample","fastq_1","fastq_2","strandedness"
+"ERX676592","nf_out/fastq/ERX676592_ERR732904.fastq.gz","","auto"
+"ERX676593","nf_out/fastq/ERX676593_ERR732906.fastq.gz","","auto"
+```
+
+There are two problems:-
+
+- the sample sheet contains lots of extra columns of metadata about each sample. Some of these contain long descriptions of the experimental protocol, including quotes that the RNA-seq pipeline isn't able to read. The pipeline only needs the first four columns.
+- the paths to the fastq files are *relative* to the `fetchngs` directory, so the pipeline won't be able to find them when it is run from the `rnaseq` directory.
+
+We can fix both of these with a couple of Unix commands, run from the `rnaseq` directory, to create a new sample sheet (`samplesheet.csv`) to use as the `input`. `cut` keeps the first four columns, and `sed` adds `../fetchngs/` to the start of each fastq path. The relative path `../fetchngs/` assumes the two directories sit side-by-side; change this if you ran `fetchngs` somewhere else.
+
+```{bash}
+cut -d, -f1-4 ../fetchngs/nf_out/samplesheet/samplesheet.csv | sed 's#"nf_out/fastq#"../fetchngs/nf_out/fastq#' > samplesheet.csv
+```
+
+This is quite a common situation; the output of one pipeline doesn't always slot straight into the next one, so it is always worth checking the files in between!
+
+There are number of other files you will need to re-run this example; the first of which will download the reference genome and annotation (`download.sh`). Submit this download script first (`qsub download.sh`) if you want to try out the pipeline for yourself
+
+
 
 I have created a file called `rnaseq_human.yml` to define the parameters for the pipeline. Having your parameters in a file such as this makes the job submission code a bit cleaner, and means you can re-analyse the same dataset with slightly different parameters by pointing to different config files. You can also reuse the same set of parameters on multiple projects. You can specify what reference data you want to use for alignment and annotation, and I have chosen to use Ensembl as my source. As I will want to re-use the same references I have created a small configuration file that points to the locations of these files.
 
@@ -281,7 +326,7 @@ gtf: "ref_data/Homo_sapiens.GRCh38.115.gtf"
 aligner: "star_rsem"
 ```
 
-For this example, I could also create a separate parameter and job submission script for running the alignment-free (and hence quicker) pipeline. 
+For this example, I could also create a separate parameter and job submission script for running an alternative branch of the pipeline. 
 
 ```{bash}
 ## rnaseq_human_quick.yml
@@ -291,11 +336,7 @@ skip_alignment: true
 pseudo_aligner: "salmon"
 ```
 
-Note that the choice of tools is dictated by what the community thinks is best-practice or gold standard. If you want to use some obscure tool from 10 years ago with only a couple of citations - you are probably out of luck. Similarly, only the most modern tools are supported and not deprecated tools such as `bowtie`. Each pipeline has active github and slack communities, so you can always suggest new tools if you have ideas...
-
-
-One important point to note is that the pipeline will perform QC using `DESeq2`, but does not do any kind of differential expression or downstream analysis. You will still need to use R for this ;) You do however get all the outputs you will need in the `nf_out/star_salmon` folder including txt and rds files that can be loaded directly into R.
-
+Note that the choice of tools is dictated by what the community thinks is best-practice or gold standard. If you want to use some obscure tool from 10 years ago with only a couple of citations - you are probably out of luck. Similarly, only the most modern tools are supported and not deprecated tools. Each pipeline has active github and slack communities, so you can always suggest new tools if you have ideas...
 
 ### Tips for usage
 
